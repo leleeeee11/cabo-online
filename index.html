@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CABO Online</title>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Isometra&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Clarity+City:wght@400;700&display=swap">
+<style>
+:root{--acc:#f2b632;--ink:#1d2a24;--paper:#f6efdc}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:radial-gradient(circle at 50% 30%,#1d6a4f,#0a2a20);color:#fff;font-family:'Clarity City',system-ui,sans-serif}
+#app{max-width:880px;margin:0 auto;padding:10px;display:flex;flex-direction:column;gap:12px;min-height:100vh;padding-top:max(10px,env(safe-area-inset-top));padding-bottom:max(10px,env(safe-area-inset-bottom))}
+h1,h2,.code{font-family:'Isometra',Georgia,serif;font-weight:400}
+h1{font-size:clamp(34px,10vw,48px);margin:20px 0 0;text-align:center;letter-spacing:.08em}
+button,input{font:inherit;font-weight:700;border-radius:12px;border:0;padding:12px 18px}
+button{background:var(--acc);color:var(--ink);cursor:pointer}
+input{background:#fff;color:var(--ink);width:100%;text-transform:none}
+.box{display:flex;flex-direction:column;gap:10px;max-width:340px;margin:0 auto;width:100%}
+.code{font-size:56px;text-align:center;letter-spacing:.2em;color:var(--acc)}
+.row{display:flex;gap:6px;justify-content:center}
+.ops{display:flex;flex-wrap:wrap;gap:10px 16px;justify-content:center}
+.op{padding:6px 8px;border-radius:10px;text-align:center;border:2px solid transparent}
+.op.cur{border-color:var(--acc)}
+.op small{opacity:.8}
+.card{--cw:clamp(56px,18vw,96px);width:var(--cw);aspect-ratio:45/64;border-radius:7%;background:#e9e2cf center/cover no-repeat;box-shadow:0 2px 6px #0007;user-select:none;position:relative;flex:none}
+.card.sm{--cw:clamp(30px,8vw,48px)}
+.empty{background:none;border:2px dashed #fff4;box-shadow:none}
+.hot{outline:3px dashed var(--acc);cursor:pointer}
+.held{outline:3px solid var(--acc);box-shadow:0 0 14px var(--acc);margin:6px 0 22px}
+#rules{position:fixed;inset:0;background:#000d;overflow:auto;padding:max(12px,env(safe-area-inset-top)) 12px 24px}
+.rb{max-width:640px;margin:0 auto;background:var(--paper);color:var(--ink);padding:18px;border-radius:14px;line-height:1.5}
+.rb h2{margin-top:12px}.rb p{margin:0 0 .9em}
+.sel{outline:4px solid var(--acc);transform:translateY(-8px)}
+.mid{display:flex;gap:18px;justify-content:center;align-items:flex-end;min-height:130px}
+.mid small{display:block;text-align:center;margin-top:4px;opacity:.85}
+.me{margin-top:auto}
+.bar{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.msg{text-align:center;min-height:1.4em}
+table{margin:0 auto;border-collapse:collapse}td{padding:4px 12px}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#000c;padding:10px 16px;border-radius:10px;opacity:0;transition:opacity .3s;pointer-events:none}
+</style></head><body>
+<div id="app"></div><div id="toast"></div>
+<div id="rules" hidden><div class="rb">
+<button data-a="close">✖️ Chiudi</button>
+<h2>CABO – Regole</h2>
+<p><b><u>Obiettivo</u></b> – Raccogliere le carte più basse in ogni mano per accumulare il minor numero di punti alla fine della partita.</p>
+<p><b><u>Inizio</u></b> – Mescolare le carte e distribuire 4 carte a ciascuno. Posizionare le carte rimanenti <i>coperte come mazzo di pesca</i> e una accanto <i>scoperta come pila degli scarti</i>. Senza guardare, disporre le carte ricevute coperte, una accanto all'altra. I giocatori possono guardare 2 delle proprie carte una sola volta dopo ogni distribuzione. L'ordine e la posizione delle carte devono rimanere invariati per tutto il round. Nel primo round, decidere chi inizia. Nei round successivi, inizia il vincitore del round precedente (in caso di parità, inizia il giocatore in parità con il punteggio totale più basso).</p>
+<p><b><u>Come si gioca</u></b> – Si gioca a turno in senso orario; ogni giocatore compie una delle tre azioni: <b>1. Prendere la carta in cima alla pila degli scarti</b> e sostituire, coperta, una delle proprie carte o carte uguali (vedi sotto). <b>2. Prendere la carta in cima al mazzo di pesca</b>, guardarla e <b>(a)</b> sostituire, coperta, una delle proprie carte o carte uguali; oppure <b>(b)</b> scartarla; oppure <b>(c)</b>, se è una carta a scelta, eseguire l'azione e poi scartarla. <b>3. Chiamare <i>Cabo</i>.</b> Quando un giocatore ritiene di avere il punteggio più basso, può usare il proprio turno per chiamare <i>Cabo</i> (senza pescare una carta). Una volta chiamato <i>Cabo</i>, tutti i giocatori diversi da quello che ha chiamato <i>Cabo</i> fanno ancora un turno.<br>Se il mazzo di pesca finisce, mescolare la pila degli scarti (mettendo da parte la sua carta in cima come nuova pila degli scarti) e metterla coperta come nuovo mazzo di pesca.</p>
+<p><b><u>Carte uguali</u></b> – Coppie, tris o poker di carte uguali possono essere tutti scambiati con una sola carta della pila degli scarti o del mazzo di pesca (si continua poi la partita con solo 3, 2 o anche solo 1 carta). Se si tenta di abbinare delle carte ma non sono uguali, le carte tentate devono essere mostrate a tutti i presenti al tavolo e rimesse al loro posto originale. La carta di sostituzione tentata viene poi scartata e il turno è perso.</p>
+<p><b><u>Carte a scelta</u></b> – <b>Peek</b>: guarda una delle tue carte; <b>Spy</b>: guarda una delle carte di un altro giocatore; <b>Swap</b>: scambia una delle tue carte con una di un altro giocatore (ma senza guardare!). Le carte a scelta possono essere usate per i loro punti, oppure l'azione può essere usata quando vengono prese dal mazzo di pesca e scartate. Non è obbligatorio usare l'azione e l'azione non può essere usata su carte prese dalla pila degli scarti o su quelle scartate dalla mano di un giocatore.</p>
+<p><b><u>Punteggio</u></b> – Dopo che tutti hanno giocato il loro ultimo turno, girare le carte e contare i punti di tutte le carte nella mano di ciascun giocatore. Il giocatore con il punteggio più basso vince e riceve 0 punti. Tutti gli altri ricevono i punti presenti nella loro mano. Se il giocatore che ha chiamato <b><i>Cabo</i></b> non ha il punteggio più basso, riceve 5 punti di penalità in aggiunta al suo punteggio. In caso di parità, vince il giocatore che ha chiamato <i>Cabo</i>; se nessuno dei giocatori in parità ha chiamato <i>Cabo</i>, tutti ricevono 0 punti.</p>
+<p><b><u>Kamikaze</u></b> – Terminare un round con due 12 ed entrambi i 13: tutti gli altri ricevono 50 punti e tu ricevi 0 punti.</p>
+<p><b><u>Esattamente 100</u></b> – Se un giocatore totalizza esattamente 100 punti, il suo punteggio scende a 50.</p>
+<p><b><u>Fine della partita</u></b> – Quando un giocatore supera i 100 punti, vince il giocatore con il punteggio più basso.</p>
+<p><i>Componenti del gioco: carte numero da 1 a 12 (4 per ciascun numero), carte numero 0 e 13 (2 per ciascun numero); regole in inglese, tedesco e francese</i></p>
+<button data-a="close">✖️ Chiudi</button>
+</div></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const sh=a=>{for(let i=a.length;i-->1;){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+let peer,conn,host=false,G,V=null,lobby=[],code='',name='',flash={},sel=[],ownSel=null;
+const toast=t=>{const e=$('#toast');e.textContent=t;e.style.opacity=1;setTimeout(()=>e.style.opacity=0,3500)};
+const err=e=>toast(e.type=='peer-unavailable'?'Stanza non trovata':'Errore di rete: '+e.type);
+const sendH=m=>host?recv(0,m):conn.send(m);
+
+/* ---------- RETE ---------- */
+function mk(){
+  const c=[...Array(4)].map(()=>'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.random()*24|0]).join('');
+  peer=new Peer('cabo-'+c);
+  peer.on('open',()=>{host=true;code=c;G={st:'lobby',pl:[{name,tot:0}]};peer.on('connection',onConn);lobbyBc()});
+  peer.on('error',e=>e.type=='unavailable-id'?mk():err(e));
+}
+function jn(c){
+  c=c.trim().toUpperCase();peer=new Peer();
+  peer.on('open',()=>{conn=peer.connect('cabo-'+c,{reliable:true});
+    conn.on('open',()=>conn.send({t:'join',name}));
+    conn.on('data',onMsg);conn.on('close',()=>toast('Connessione persa'))});
+  peer.on('error',err);
+}
+function onConn(c){
+  c.on('data',m=>{
+    if(m.t=='join'){
+      if(G.st!='lobby'||G.pl.length>4){c.send({t:'full'});return}
+      c.idx=G.pl.length;G.pl.push({conn:c,name:(m.name||'?').slice(0,12),tot:0});lobbyBc();
+    }else if(c.idx>0)recv(c.idx,m);
+  });
+  c.on('close',()=>{if(c.idx>0&&G.st!='lobby'){G.msg=G.pl[c.idx].name+' si è disconnesso';bc()}});
+}
+const send=(i,m)=>i==0?onMsg(m):G.pl[i].conn.send(m);
+const lobbyBc=()=>G.pl.forEach((p,i)=>send(i,{t:'lobby',names:G.pl.map(p=>p.name),code}));
+const bc=()=>G.pl.forEach((p,i)=>send(i,{t:'state',s:view(i)}));
+const flashTo=(i,l)=>send(i,{t:'flash',l});
+const flashAll=l=>G.pl.forEach((p,i)=>flashTo(i,l));
+
+/* ---------- LOGICA (solo host) ---------- */
+function deal(){
+  const d=[];for(let v=1;v<=12;v++)for(let k=0;k<4;k++)d.push(v);d.push(0,0,13,13);
+  G.deck=sh(d);G.pl.forEach(p=>{p.hand=[0,1,2,3].map(()=>G.deck.pop());p.pks=[]});
+  G.disc=[G.deck.pop()];G.st='peek';G.sub='start';G.held=null;G.cabo=-1;G.cur=G.first;
+  G.msg='Guarda 2 delle tue carte';G.delta=null;
+}
+function draw1(){
+  if(!G.deck.length){const t=G.disc.pop();G.deck=sh(G.disc);G.disc=[t]}
+  return G.deck.pop();
+}
+function next(c){
+  G.sub='start';G.held=null;
+  if(!c&&G.cabo>=0&&--G.rem==0)return score();
+  G.cur=(G.cur+1)%G.pl.length;
+}
+function score(){
+  const P=G.pl,sc=P.map(p=>p.hand.reduce((a,c)=>a+(c||0),0));
+  const k=P.findIndex(p=>p.hand.filter(c=>c!=null).sort((a,b)=>a-b).join()=='12,12,13,13');
+  let d;
+  if(k>=0){d=sc.map((_,j)=>j==k?0:50);G.msg='KAMIKAZE di '+P[k].name+'!'}
+  else{
+    const mn=Math.min(...sc);let w=sc.map((s,j)=>s==mn?j:-1).filter(j=>j>=0);
+    if(w.includes(G.cabo))w=[G.cabo];
+    d=sc.map((s,j)=>w.includes(j)?0:s+(j==G.cabo?5:0));
+    G.msg=w.includes(G.cabo)?P[G.cabo].name+' vince il round con CABO':G.cabo>=0?P[G.cabo].name+' ha sbagliato CABO: +5 punti':'Round finito';
+  }
+  P.forEach((p,j)=>{p.tot+=d[j];if(p.tot==100)p.tot=50});
+  const m0=Math.min(...d);
+  G.first=d.map((x,j)=>j).filter(j=>d[j]==m0).sort((a,b)=>P[a].tot-P[b].tot)[0];
+  G.delta=d;G.sc=sc;G.st='round';
+  if(P.some(p=>p.tot>100)){
+    const mt=Math.min(...P.map(p=>p.tot));
+    G.st='over';G.msg='Partita finita! Vince '+P.filter(p=>p.tot==mt).map(p=>p.name).join(' e ');
+  }
+}
+function recv(i,m){
+  const P=G.pl,p=P[i],a=m.a,mine=G.st=='turn'&&G.cur==i;
+  if(a=='start'&&i==0&&G.st=='lobby'&&P.length>1){G.round=1;G.first=Math.random()*P.length|0;deal()}
+  else if(a=='next'&&i==0&&(G.st=='round'||G.st=='over')){
+    if(G.st=='over'){P.forEach(q=>q.tot=0);G.round=0;G.first=Math.random()*P.length|0}
+    G.round++;deal();
+  }
+  else if(a=='peek'&&G.st=='peek'&&p.pks.length<2&&p.hand[m.s]!=null&&!p.pks.includes(m.s)){
+    p.pks.push(m.s);flashTo(i,[{p:i,s:m.s,v:p.hand[m.s]}]);
+    if(P.every(q=>q.pks.length>=2)){G.st='turn';G.msg='Si comincia! Tocca a '+P[G.cur].name}
+  }
+  else if(mine&&G.sub=='start'){
+    if(a=='draw'){G.held=draw1();G.from='d';G.sub='drawn';G.msg=p.name+' ha pescato'}
+    else if(a=='take'&&G.disc.length){G.held=G.disc.pop();G.from='t';G.sub='drawn';G.msg=p.name+' ha preso lo scarto'}
+    else if(a=='cabo'&&G.cabo<0){G.cabo=i;G.rem=P.length-1;G.msg=p.name+' ha chiamato CABO! Ultimo giro per gli altri';next(true)}
+  }
+  else if(mine&&G.sub=='drawn'){
+    if(a=='rep'){
+      const s=m.s;
+      if(!Array.isArray(s)||!s.length||new Set(s).size!=s.length||!s.every(k=>Number.isInteger(k)&&p.hand[k]!=null))return;
+      if(s.length==1){G.disc.push(p.hand[s[0]]);p.hand[s[0]]=G.held;G.msg=p.name+' ha sostituito una carta'}
+      else{
+        const vs=s.map(k=>p.hand[k]);
+        if(vs.every(v=>v==vs[0])){G.disc.push(...vs);s.forEach(k=>p.hand[k]=null);p.hand[s[0]]=G.held;G.msg=p.name+' ha fatto un match di '+s.length+'!'}
+        else{flashAll(s.map(k=>({p:i,s:k,v:p.hand[k]})));G.disc.push(G.held);G.msg='Match sbagliato di '+p.name+': turno perso'}
+      }
+      next();
+    }
+    else if(a=='disc'&&G.from=='d'){
+      const h=G.held;G.disc.push(h);G.held=null;G.msg=p.name+' ha scartato un '+h;
+      if(h>=7&&h<=12){G.sub='power';G.pw=h<9?'peek':h<11?'spy':'swap'}else next();
+    }
+  }
+  else if(mine&&G.sub=='power'){
+    const q=P[m.p];
+    if(a=='skip')next();
+    else if(a=='pw'&&q&&q.hand[m.s]!=null&&(G.pw=='peek'?m.p==i:G.pw=='spy'&&m.p!=i)){
+      flashTo(i,[{p:m.p,s:m.s,v:q.hand[m.s]}]);G.msg=p.name+' ha usato il potere';next();
+    }
+    else if(a=='sw'&&G.pw=='swap'&&q&&m.p!=i&&p.hand[m.o]!=null&&q.hand[m.s]!=null){
+      [p.hand[m.o],q.hand[m.s]]=[q.hand[m.s],p.hand[m.o]];G.msg=p.name+' ha scambiato una carta con '+q.name;next();
+    }
+  }
+  bc();
+}
+function view(i){
+  const end=G.st=='round'||G.st=='over';
+  return{st:G.st,cur:G.cur,you:i,sub:G.sub,pw:G.pw,round:G.round,msg:G.msg,cabo:G.cabo,from:G.from,
+    top:G.disc.length?G.disc[G.disc.length-1]:null,dk:G.deck.length,
+    held:G.st=='turn'&&G.sub=='drawn'&&G.cur==i?G.held:null,
+    pl:G.pl.map(p=>({name:p.name,tot:p.tot,hand:p.hand.map(c=>c==null?null:end?c:-1)})),
+    d:G.delta,sc:G.sc};
+}
+
+/* ---------- CLIENT / UI ---------- */
+function onMsg(m){
+  if(m.t=='full')return toast('Partita piena o già iniziata');
+  if(m.t=='lobby'){lobby=m.names;code=m.code;V=null}
+  if(m.t=='state'){V=m.s;if(!(V.cur==V.you&&V.sub=='drawn'))sel=[];if(V.sub!='power')ownSel=null}
+  if(m.t=='flash')m.l.forEach(f=>{const k=f.p+'-'+f.s;flash[k]=f.v;setTimeout(()=>{delete flash[k];draw()},3000)});
+  draw();
+}
+function cell(v,p,s,cls,at){
+  const f=flash[p+'-'+s];if(f!=null)v=f;
+  const st=v==null?'':` style="background-image:url(cards/${v<0?'back':'front'+v}.jpg)"`;
+  return `<div class="card ${v==null?'empty':''} ${cls}" ${at}${st} data-p="${p}" data-s="${s}"></div>`;
+}
+function draw(){
+  const A=$('#app');
+  if(V)A.innerHTML=game();
+  else if(lobby.length)A.innerHTML=`<h1>CABO</h1><div class="msg">Codice stanza</div><div class="code">${code}</div><div class="box">${lobby.map(n=>`<div class="msg">${n.replace(/</g,'&lt;')}</div>`).join('')}${host?(lobby.length>1?'<button data-a="start">▶️ Inizia la partita</button>':'<div class="msg">Aspetta almeno un altro giocatore</div>'):'<div class="msg">In attesa dell\'host…</div>'}</div>`;
+  else if(!$('#nm'))A.innerHTML=`<h1>CABO</h1><div class="box"><input id="nm" placeholder="Il tuo nome" maxlength="12"><button data-a="create">➕ Crea stanza</button><div class="msg">oppure</div><input id="cd" placeholder="Codice stanza" maxlength="4"><button data-a="join">🚪 Entra</button><button data-a="rules">📖 Regole</button></div>`;
+}
+function game(){
+  const v=V,my=v.cur==v.you&&v.st=='turn',st=v.sub,pw=v.pw,esc=s=>s.replace(/</g,'&lt;');
+  const hot=my&&st=='power'&&pw!='peek';
+  const ops=v.pl.map((p,j)=>j==v.you?'':`<div class="op ${v.cur==j&&v.st=='turn'?'cur':''}"><b>${esc(p.name)}</b> <small>${p.tot} pt${v.cabo==j?' · CABO':''}</small><div class="row">${p.hand.map((c,s)=>cell(c,j,s,'sm '+(hot&&c!=null?'hot':''),hot&&c!=null?'data-a="opp"':'')).join('')}</div></div>`).join('');
+  const me=v.pl[v.you];
+  const can=v.st=='peek'||(my&&(st=='drawn'||(st=='power'&&pw!='spy')));
+  const own=me.hand.map((c,s)=>cell(c,v.you,s,(sel.includes(s)||ownSel===s?'sel ':'')+(can&&c!=null?'hot':''),can&&c!=null?'data-a="own"':'')).join('');
+  const canDraw=my&&st=='start';
+  let bar='',info=v.msg||'';
+  if(v.st=='peek')info='Tocca 2 tue carte per guardarle. '+(info==='Guarda 2 delle tue carte'?'':info);
+  else if(v.st=='turn'&&!my)info=`Tocca a ${esc(v.pl[v.cur].name)}. ${info}`;
+  else if(my&&st=='start'){info='Tocca a te: pesca, prendi lo scarto o chiama Cabo';bar='<button data-a="cabo">🛎️ CABO!</button>'}
+  else if(my&&st=='drawn'){info='Scegli una carta tua da sostituire (più carte uguali = match)';
+    bar=(sel.length?`<button data-a="rep">${sel.length>1?'🧩 Prova match ('+sel.length+')':'🔄 Sostituisci'}</button>`:'')+(v.from=='d'?'<button data-a="disc">🗑️ Scarta</button>':'')}
+  else if(my&&st=='power'){info=pw=='peek'?'Potere: guarda una tua carta':pw=='spy'?'Potere: guarda una carta di un avversario':ownSel==null?'Potere: scegli una tua carta, poi una avversaria':'Ora tocca la carta avversaria';bar='<button data-a="skip">⏭️ Salta il potere</button>'}
+  let res='';
+  if(v.st=='round'||v.st=='over'){
+    res=`<table>${v.pl.map((p,j)=>`<tr><td>${esc(p.name)}</td><td>mano ${v.sc[j]}</td><td>${v.d[j]>0?'+':''}${v.d[j]}</td><td><b>${p.tot}</b></td></tr>`).join('')}</table>`;
+    bar=v.you==0?`<button data-a="next">${v.st=='over'?'🔁 Nuova partita':'➡️ Prossimo round'}</button>`:'<div class="msg">Aspetta l\'host…</div>';
+    info=v.msg;
+  }
+  return `<div class="msg"><small>Round ${v.round}</small></div><div class="ops">${ops}</div>
+  <div class="mid"><div>${cell(-1,'k',0,canDraw?'hot':'',canDraw?'data-a="draw"':'')}<small>Mazzo (${v.dk})</small></div>
+  <div>${cell(v.top,'d',0,canDraw&&v.top!=null?'hot':'',canDraw&&v.top!=null?'data-a="take"':'')}<small>Scarto</small></div></div>
+  <div class="msg">${esc(info)}</div>${res}<div class="bar">${bar}</div>
+  <div class="me"><div class="msg"><b>${esc(me.name)}</b> <small>${me.tot} pt${v.cabo==v.you?' · CABO':''}</small></div>${v.held!=null?`<div class="row">${cell(v.held,'h',0,'held','')}</div>`:''}<div class="row">${own}</div></div>`;
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-a]');if(!t)return;
+  const d=t.dataset,a=d.a;
+  if(a=='create'||a=='join'){
+    name=($('#nm').value.trim()||'Giocatore').slice(0,12);
+    if(a=='create')mk();else if($('#cd').value.trim().length==4)jn($('#cd').value);else toast('Inserisci il codice di 4 lettere');
+  }
+  else if(a=='own'){
+    const s=+d.s;
+    if(V.st=='peek')return sendH({a:'peek',s});
+    if(V.sub=='drawn')sel=sel.includes(s)?sel.filter(x=>x!=s):[...sel,s];
+    else if(V.sub=='power'){if(V.pw=='peek')return sendH({a:'pw',p:V.you,s});ownSel=s}
+    draw();
+  }
+  else if(a=='opp'){
+    if(V.pw=='spy')sendH({a:'pw',p:+d.p,s:+d.s});
+    else if(ownSel!=null){sendH({a:'sw',o:ownSel,p:+d.p,s:+d.s});ownSel=null}
+    else toast('Prima scegli una tua carta');
+  }
+  else if(a=='rep'){sendH({a,s:sel});sel=[]}
+  else if(a=='rules')$('#rules').hidden=false;
+  else if(a=='close')$('#rules').hidden=true;
+  else sendH({a});
+});
+for(let i=0;i<14;i++)new Image().src='cards/front'+i+'.jpg';new Image().src='cards/back.jpg';
+draw();
+</script></body></html>
